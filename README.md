@@ -37,7 +37,7 @@ sudo touch /etc/wyre/no-user-isolation
 
 <img src="res/screenshots/expanded-details.png" width="850">
 
-### Building from source
+## Building from source
 
 #### Dependencies
 

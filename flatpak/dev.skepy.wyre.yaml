@@ -1,0 +1,127 @@
+app-id: dev.skepy.wyre
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: startup.sh
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Location databases are downloaded (optional)
+  - --share=network
+  # The daemon's socket, which is only shared if the directory exists when
+  # the app starts (see startup.sh). Read-only is enough to connect to it.
+  - --filesystem=/run/wyre:ro
+  # startup.sh installs and starts the service on the host
+  - --talk-name=org.freedesktop.Flatpak
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/man
+  - '*.a'
+modules:
+  # The setup dialogs in startup.sh
+  - name: kdialog
+    buildsystem: cmake-ninja
+    cleanup:
+      - kdialog_progress_helper
+      - org.kde.kdialog.*
+      - /share/locale
+    sources:
+      - type: archive
+        url: https://download.kde.org/stable/release-service/26.08.2/src/kdialog-26.08.2.tar.xz
+        sha256: ed4a6fde2832d2c0265c855b2a871a6b2bb5a22a1949edaed67f44dbda84bf20
+        x-checker-data:
+          type: anitya
+          project-id: 241764
+          stable-only: true
+          url-template: https://download.kde.org/stable/release-service/$version/src/kdialog-$version.tar.xz
+
+  # Runs the daemon on the host with this app's files and runtime (see
+  # daemon.sh). Linked statically.
+  - name: flatbox
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/flatbox/cargo
+        CARGO_NET_OFFLINE: 'true'
+        RUSTFLAGS: -C target-feature=+crt-static -L native=/run/build/flatbox/nolibm
+    build-commands:
+      # The SDK has no static libm, which Rust's std always links but flatbox
+      # doesn't use, so an empty one stands in.
+      - mkdir -p nolibm && printf '!<arch>\n' > nolibm/libm.a
+      # An explicit target keeps RUSTFLAGS off the build's own proc macros.
+      - cargo --offline build --release --locked --target ${FLATPAK_ARCH}-unknown-linux-gnu
+      - install -Dm755 target/${FLATPAK_ARCH}-unknown-linux-gnu/release/flatbox -t ${FLATPAK_DEST}/bin
+    sources:
+      - type: git
+        url: https://github.com/ilya-zlobintsev/flatbox.git
+        tag: v0.0.14
+        commit: 5abbabf8b8e2d1aecbac75737e2ec6df475d604f
+        x-checker-data:
+          type: git
+          tag-pattern: ^v([\d.]+)$
+      - flatbox-sources.json
+
+  # Links the eBPF program at build time. Built against the Rust compiler's
+  # own LLVM, which has the BPF target (the LLVM SDK extensions don't) and
+  # matches the bitcode it links
+  - name: bpf-linker
+    buildsystem: simple
+    cleanup:
+      - '*'
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/bpf-linker/cargo
+        CARGO_NET_OFFLINE: 'true'
+        LLVM_PREFIX: /app/lib/rust-llvm
+    build-commands:
+      - mkdir -p /app/lib/rust-llvm/lib
+      - ln -s /usr/lib/sdk/rust-stable/lib/libLLVM.so.* /app/lib/rust-llvm/lib/
+      - ln -s /usr/lib/sdk/rust-stable/lib/libLLVM.so.* /app/lib/rust-llvm/lib/libLLVM.so
+      # The crate's cargo config links with clang, which the SDK doesn't have
+      - rm .cargo/config.toml
+      - cargo --offline install --locked --path . --root /app --no-default-features --features
+        llvm-$(ls /usr/lib/sdk/rust-stable/lib/libLLVM.so.* | sed 's/.*libLLVM\.so\.\([0-9]*\)\..*/\1/')
+    sources:
+      - type: archive
+        archive-type: tar-gzip
+        url: https://static.crates.io/crates/bpf-linker/bpf-linker-0.11.1.crate
+        sha256: 00a25c7e17c085d99975697915058da572192d0051ce33666a2b0f71170bb392
+      - bpf-linker-sources.json
+
+  - name: wyre
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/wyre/cargo
+        CARGO_NET_OFFLINE: 'true'
+    build-commands:
+      - cargo --offline build --release --locked
+      - install -Dm755 -t ${FLATPAK_DEST}/bin target/release/wyre target/release/wyre-daemon
+      - install -Dm755 flatpak/startup.sh ${FLATPAK_DEST}/bin/startup.sh
+      - install -Dm755 flatpak/daemon.sh ${FLATPAK_DEST}/bin/daemon.sh
+      - install -Dm644 -t ${FLATPAK_DEST}/share/applications res/${FLATPAK_ID}.desktop
+      - desktop-file-edit --set-key Exec --set-value startup.sh ${FLATPAK_DEST}/share/applications/${FLATPAK_ID}.desktop
+      - install -Dm644 -t ${FLATPAK_DEST}/share/metainfo res/${FLATPAK_ID}.metainfo.xml
+      - install -Dm644 -t ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps res/${FLATPAK_ID}.svg
+    sources:
+      # Includes the standard library's crates for -Z build-std, tied to the
+      # rust-stable extension's exact version (see update-sources.sh).
+      - generated-sources.json
+      - type: dir
+        path: ..
+        skip:
+          - target
+          - .flatpak-builder
+          - build-dir
+          - repo
+          - flatpak/.flatpak-builder
+          - flatpak/build-dir
+          - flatpak/repo

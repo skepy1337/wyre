@@ -1,0 +1,46 @@
+name: Flatpak
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  flatpak:
+    name: Flatpak (${{ matrix.arch }})
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-26.04
+          - arch: aarch64
+            runner: ubuntu-26.04-arm
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v7
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: flatpak/dev.skepy.wyre.yaml
+          arch: ${{ matrix.arch }}
+          bundle: wyre-${{ matrix.arch }}.flatpak
+          artifact-name: wyre-${{ matrix.arch }}
+          build-dir: build-dir
+
+  release:
+    needs: flatpak
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: wyre-*
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: wyre-*.flatpak
+          generate_release_notes: true

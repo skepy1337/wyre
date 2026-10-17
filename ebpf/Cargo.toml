@@ -1,0 +1,20 @@
+[package]
+name = "ebpf"
+version = "0.1.0"
+edition.workspace = true
+
+[features]
+user = ["dep:aya"]
+
+[dependencies]
+aya = { workspace = true, optional = true }
+
+#[target.'cfg(target_arch = "bpf")'.dependencies]
+aya-ebpf.workspace = true
+
+[build-dependencies]
+which.workspace = true
+
+[[bin]]
+name = "wyre-ebpf"
+path = "src/main.rs"

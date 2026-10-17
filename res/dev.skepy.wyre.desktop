@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Wyre
+GenericName=Network Monitor
+Comment=Monitor connections made by programs
+Icon=dev.skepy.wyre
+Exec=wyre
+Terminal=false
+Categories=Network;Monitor;Qt;
+Keywords=network;traffic;bandwidth;connections;monitor;ebpf;
+StartupWMClass=wyre

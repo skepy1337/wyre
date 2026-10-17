@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.skepy.wyre</id>
+  <metadata_license>CC0</metadata_license>
+  <project_license>GPL-3.0</project_license>
+  <name>Wyre</name>
+  <summary>Monitor all connections made by programs</summary>
+  <developer id="dev.skepy">
+    <name>Skepy</name>
+  </developer>
+  <description>
+    <p>
+      Wyre shows all network connections made by programs on your system, grouped by program and process.
+    </p>
+    <p>
+      The tracking is done by a daemon using eBPF hooks.
+
+      The Flatpak runs it outside its sandbox, and offers to set up the
+      service on first start.
+    </p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/skepy1337/wyre/v0.1.1/res/screenshots/expanded-details.png</image>
+      <caption>A connection's details and location</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/skepy1337/wyre</url>
+  <url type="bugtracker">https://github.com/skepy1337/wyre/issues</url>
+  <launchable type="desktop-id">dev.skepy.wyre.desktop</launchable>
+  <provides>
+    <binary>wyre</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.1" date="2026-10-17">
+      <description>
+        <p>First release</p>
+      </description>
+    </release>
+  </releases>
+</component>

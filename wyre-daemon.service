@@ -1,0 +1,9 @@
+[Unit]
+Description=Wyre network traffic daemon
+
+[Service]
+ExecStart=/usr/local/bin/wyre-daemon
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

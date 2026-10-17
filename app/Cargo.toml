@@ -1,0 +1,24 @@
+[package]
+name = "wyre"
+version = "0.1.1"
+edition.workspace = true
+
+[[bin]]
+name = "wyre"
+path = "main.rs"
+
+[dependencies]
+anyhow.workspace = true
+common.workspace = true
+cxx.workspace = true
+cxx-qt.workspace = true
+cxx-qt-lib.workspace = true
+dirs.workspace = true
+flate2.workspace = true
+libc.workspace = true
+maxminddb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[build-dependencies]
+cxx-qt-build.workspace = true

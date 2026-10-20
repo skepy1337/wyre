@@ -20,6 +20,7 @@ pub struct ViewSettings {
     pub show_udp: bool,
     pub show_icmp: bool,
     pub hide_dns: bool,
+    pub hide_empty: bool,
     pub zoom: f64,
 }
 
@@ -30,6 +31,7 @@ impl Default for ViewSettings {
             show_udp: true,
             show_icmp: true,
             hide_dns: false,
+            hide_empty: false,
             zoom: 1.0,
         }
     }

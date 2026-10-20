@@ -120,6 +120,12 @@ Rectangle {
                         checked: WyreModel.hide_dns
                         onTriggered: Rows.changeView(() => WyreModel.toggle_dns())
                     }
+                    QQC2.MenuItem {
+                        text: "Hide Connections Without Traffic"
+                        checkable: true
+                        checked: WyreModel.hide_empty
+                        onTriggered: Rows.changeView(() => WyreModel.toggle_empty())
+                    }
                     QQC2.MenuSeparator {}
                     QQC2.MenuItem {
                         action: zoomInAction

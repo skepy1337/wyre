@@ -12,6 +12,8 @@ pub struct View {
     pub show_icmp: bool,
     // hides connections on ports 53 and 5353
     pub hide_dns: bool,
+    // hides connections that haven't sent or received any bytes
+    pub hide_empty: bool,
     pub sort_by: String,
     pub sort_desc: bool,
     pub conn_sort_by: String,
@@ -23,6 +25,8 @@ pub struct View {
 impl View {
     fn shows(&self, conn: &Conn) -> bool {
         if self.hide_dns && is_dns(conn) {
+            false
+        } else if self.hide_empty && is_empty(conn) {
             false
         } else if conn.is_tcp() {
             self.show_tcp
@@ -205,12 +209,12 @@ pub fn connection(
     remote: &str,
     geo: &GeoDb,
 ) -> Option<String> {
-    let (local, remote) = (address_ip(local)?, address_ip(remote)?);
+    let (local, remote) = (parse_address(local)?, parse_address(remote)?);
     let process = groups.iter().flat_map(|g| &g.processes).find(|p| p.pid == pid)?;
     let conns = process.connections.iter().copied().filter(|c| {
         c.protocol_name() == proto
-            && c.local_address.ip() == local
-            && c.remote_address.ip() == remote
+            && c.local_address == local
+            && c.remote_address == remote
     });
     let conn = merge_by_address(conns.collect()).pop()?;
     let row = connection_row(process, &conn, geo);
@@ -240,9 +244,9 @@ fn compare_groups(a: &Summary, b: &Summary, view: &View) -> Ordering {
 }
 
 fn merge_by_address(conns: Vec<Conn>) -> Vec<Conn> {
-    let mut merged: BTreeMap<(u8, IpAddr, IpAddr), Conn> = BTreeMap::new();
+    let mut merged: BTreeMap<(u8, SocketAddr, SocketAddr), Conn> = BTreeMap::new();
     for conn in conns {
-        let key = (conn.protocol, conn.local_address.ip(), conn.remote_address.ip());
+        let key = (conn.protocol, conn.local_address, conn.remote_address);
         merged
             .entry(key)
             .and_modify(|m| {
@@ -274,6 +278,10 @@ fn sort_conns(conns: &mut [Conn], sort_by: &str, desc: bool) {
 fn is_dns(conn: &Conn) -> bool {
     let ports = [conn.local_address.port(), conn.remote_address.port()];
     (conn.is_tcp() || conn.is_udp()) && ports.iter().any(|port| matches!(port, 53 | 5353))
+}
+
+fn is_empty(conn: &Conn) -> bool {
+    conn.recv_total == 0 && conn.send_total == 0
 }
 
 fn protocol_rank(conn: &Conn) -> u8 {
@@ -309,8 +317,10 @@ fn address_text(address: SocketAddr, is_icmp: bool) -> String {
     if is_icmp { address.ip().to_string() } else { address.to_string() }
 }
 
-fn address_ip(text: &str) -> Option<IpAddr> {
-    text.parse::<SocketAddr>().map(|address| address.ip()).or_else(|_| text.parse()).ok()
+fn parse_address(text: &str) -> Option<SocketAddr> {
+    text.parse::<SocketAddr>()
+        .or_else(|_| text.parse::<IpAddr>().map(|ip| SocketAddr::new(ip, 0)))
+        .ok()
 }
 
 fn geo_line(geo: &Geo) -> Option<String> {

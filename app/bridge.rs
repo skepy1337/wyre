@@ -40,6 +40,7 @@ pub mod ffi {
         #[qproperty(bool, show_udp)]
         #[qproperty(bool, show_icmp)]
         #[qproperty(bool, hide_dns)]
+        #[qproperty(bool, hide_empty)]
         #[qproperty(f64, zoom)]
         #[qproperty(QString, geo_status)]
         #[qproperty(QString, geo_mode)]
@@ -81,6 +82,9 @@ pub mod ffi {
 
         #[qinvokable]
         fn toggle_dns(self: Pin<&mut WyreModel>);
+
+        #[qinvokable]
+        fn toggle_empty(self: Pin<&mut WyreModel>);
 
         #[qinvokable]
         fn zoom_in(self: Pin<&mut WyreModel>);
@@ -132,6 +136,7 @@ pub struct WyreModelRust {
     show_udp: bool,
     show_icmp: bool,
     hide_dns: bool,
+    hide_empty: bool,
     zoom: f64,
     geo_status: QString,
     geo_mode: QString,
@@ -169,6 +174,7 @@ impl Default for WyreModelRust {
             show_udp: settings.view.show_udp,
             show_icmp: settings.view.show_icmp,
             hide_dns: settings.view.hide_dns,
+            hide_empty: settings.view.hide_empty,
             zoom: settings.view.zoom,
             geo_status: QString::from(&status.status),
             geo_mode: QString::from(settings.geo_mode.unwrap_or(GeoMode::Off).as_str()),
@@ -316,6 +322,13 @@ impl ffi::WyreModel {
         self.update_all();
     }
 
+    fn toggle_empty(mut self: Pin<&mut Self>) {
+        let hide = !*self.hide_empty();
+        self.as_mut().set_hide_empty(hide);
+        self.as_mut().save_view();
+        self.update_all();
+    }
+
     fn zoom_in(self: Pin<&mut Self>) {
         let zoom = settings::step_zoom(*self.zoom(), true);
         self.change_zoom(zoom);
@@ -343,6 +356,7 @@ impl ffi::WyreModel {
             show_udp: *self.show_udp(),
             show_icmp: *self.show_icmp(),
             hide_dns: *self.hide_dns(),
+            hide_empty: *self.hide_empty(),
             zoom: *self.zoom(),
         };
         let mut rust = self.as_mut().rust_mut();
@@ -433,6 +447,7 @@ impl ffi::WyreModel {
             show_udp: *self.show_udp(),
             show_icmp: *self.show_icmp(),
             hide_dns: *self.hide_dns(),
+            hide_empty: *self.hide_empty(),
             sort_by: self.sort_by().to_string(),
             sort_desc: *self.sort_desc(),
             conn_sort_by: self.conn_sort_by().to_string(),
